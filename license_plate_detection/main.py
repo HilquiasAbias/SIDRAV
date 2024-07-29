@@ -9,7 +9,8 @@ from functions.enhance_lines import enhance_lines
 
 class LicensePlateDetector:
   def __init__(self, video_path, cascade_path, debug=False):
-    self.video = cv2.VideoCapture(video_path)
+    if video_path is not None:
+      self.video = cv2.VideoCapture(video_path)
     self.characters_cascade = cv2.CascadeClassifier(cascade_path)
     self.debug = debug
     self.trackers = {}
@@ -25,15 +26,28 @@ class LicensePlateDetector:
 
     for location in locations:
       (x, y, w, h) = cv2.boundingRect(location)
-      if w > h and w >= 1.5 * h:
+      plate = img[y:y+h, x:x+w]
+      if w > h: #  and w >= 1.5 * h
+        if self.debug:
+          cv2.imshow('roi', plate)
+          
+        gray_plate = cv2.cvtColor(plate, cv2.COLOR_BGR2GRAY)
+        plate_resized = cv2.resize(gray_plate, (int(w * 4), int(h * 4)))
+        plate = enhance_lines(plate_resized)
+        chars = self.characters_cascade.detectMultiScale(plate, 1.1, 5)
+
         roi_area = w * h
         frame_area = img.shape[1] * img.shape[0]
         if 0.001 < roi_area / frame_area < 0.01:
-          plate = img[y:y+h, x:x+w]
-          gray_plate = cv2.cvtColor(plate, cv2.COLOR_BGR2GRAY)
-          plate_resized = cv2.resize(gray_plate, (int(w * 4), int(h * 4)))
-          plate = enhance_lines(plate_resized)
-          chars = self.characters_cascade.detectMultiScale(plate, 1.1, 5)
+          if self.debug:
+            cv2.imshow('roi 2', plate)
+          # gray_plate = cv2.cvtColor(plate, cv2.COLOR_BGR2GRAY)
+          # plate_resized = cv2.resize(gray_plate, (int(w * 4), int(h * 4)))
+          # plate = enhance_lines(plate_resized)
+          # chars = self.characters_cascade.detectMultiScale(plate, 1.1, 5)
+
+          # if self.debug:
+          #   cv2.imshow('possible license plate', plate)
 
           if len(chars) < 1:
             try:
@@ -117,9 +131,14 @@ class LicensePlateDetector:
     self.video.release()
     cv2.destroyAllWindows()
 
+  def live(self, frame):
+    self.process_frame(frame)
+    return frame
+
+
 if __name__ == "__main__":
   parser = argparse.ArgumentParser(description="License Plate Detector")
-  parser.add_argument("--video_path", type=str, default='tests/videos/video3.mp4', help="Caminho para o vídeo")
+  parser.add_argument("--video_path", type=str, default='tests/videos/video7.mp4', help="Caminho para o vídeo")
   parser.add_argument("--chars_cascade_path", type=str, default='UKChars33_16x25_11W.xml', help="Caminho para o arquivo de cascade de caracteres")
   parser.add_argument("--debug", type=bool, default=False, help="Modo de debug")
 
