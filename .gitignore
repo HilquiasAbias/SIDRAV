@@ -1,9 +1,10 @@
 venv
+plates
+output.avi
 
-license_plate_detection/plates
 license_plate_detection/tests
-license_plate_detection/main1.py
-license_plate_detection/main2.py
-license_plate_detection/main3.py
+license_plate_detection/__pycache__
 
-license_plate_recognition
+license_plate_recognition/tests
+license_recognition/__pycache__
+license_plate_recognition/PaddleOCR
