@@ -1,4 +1,5 @@
-license_plate_detection/venv
+venv
+
 license_plate_detection/plates
 license_plate_detection/tests
 license_plate_detection/main1.py

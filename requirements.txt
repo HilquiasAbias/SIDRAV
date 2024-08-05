@@ -1,5 +1,7 @@
 opencv-contrib-python==4.9.0.80
 imutils==0.5.4
 numpy==1.26.4
-paddlepaddle==2.6.1
-paddleocr==2.8.0
+paddlepaddle
+paddleocr
+setuptools
+requests

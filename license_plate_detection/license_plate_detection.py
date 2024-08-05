@@ -27,7 +27,9 @@ class LicensePlateDetector:
     for location in locations:
       (x, y, w, h) = cv2.boundingRect(location)
       plate = img[y:y+h, x:x+w]
-      if w > h: #  and w >= 1.5 * h
+      # if w > h: #  and w >= 1.5 * h
+      # if w in range(1.2 * h, 1.7 * h):
+      if w >= h:
         if self.debug:
           cv2.imshow('roi', plate)
           
@@ -36,11 +38,17 @@ class LicensePlateDetector:
         plate = enhance_lines(plate_resized)
         chars = self.characters_cascade.detectMultiScale(plate, 1.1, 5)
 
-        roi_area = w * h
-        frame_area = img.shape[1] * img.shape[0]
-        if 0.001 < roi_area / frame_area < 0.01:
-          if self.debug:
+        print('chars:', len(chars))
+        if len(chars) > 0:
+          if not w >= 1.3 * h:
             cv2.imshow('roi 2', plate)
+            continue
+
+        # roi_area = w * h
+        # frame_area = img.shape[1] * img.shape[0]
+        # if 0.001 < roi_area / frame_area < 0.01:
+        #   if self.debug:
+        #     cv2.imshow('roi 2', plate)
           # gray_plate = cv2.cvtColor(plate, cv2.COLOR_BGR2GRAY)
           # plate_resized = cv2.resize(gray_plate, (int(w * 4), int(h * 4)))
           # plate = enhance_lines(plate_resized)
@@ -49,36 +57,37 @@ class LicensePlateDetector:
           # if self.debug:
           #   cv2.imshow('possible license plate', plate)
 
-          if len(chars) < 1:
-            try:
-              plate = correct_skew(image=plate)
-              chars = self.characters_cascade.detectMultiScale(plate, 1.1, 5)
-            except Exception as e:
-              if self.debug:
-                print('Error during skew correction:', e)
-              continue
+        if len(chars) < 1:
+          try:
+            plate = correct_skew(image=plate)
+            chars = self.characters_cascade.detectMultiScale(plate, 1.1, 5)
+          except Exception as e:
+            if self.debug:
+              print('Error during skew correction:', e)
+            continue
 
-          if len(chars) > 0:
-            found = False
-            for tracker_id, tracker in self.trackers.items():
-              (_, bbox) = tracker['instance'].update(img)
-              (x2, y2, w2, h2) = [int(v) for v in bbox]
-              if (
-                (abs(x - x2) <= 0.6 * w2 and abs(y - y2) <= 0.6 * h2) or
-                (abs(x - x2) <= 0.6 * w2 and abs((y + h) - (y2 + h2)) <= 0.6 * h2) or
-                (abs((x + w) - (x2 + w2)) <= 0.6 * w2 and abs(y - y2) <= 0.6 * h2) or
-                (abs((x + w) - (x2 + w2)) <= 0.6 * w2 and abs((y + h) - (y2 + h2)) <= 0.6 * h2)
-              ):
-                found = True
-                break
+        if len(chars) > 0:
+          print('plate detected')
+          found = False
+          for tracker_id, tracker in self.trackers.items():
+            (_, bbox) = tracker['instance'].update(img)
+            (x2, y2, w2, h2) = [int(v) for v in bbox]
+            if (
+              (abs(x - x2) <= 0.6 * w2 and abs(y - y2) <= 0.6 * h2) or
+              (abs(x - x2) <= 0.6 * w2 and abs((y + h) - (y2 + h2)) <= 0.6 * h2) or
+              (abs((x + w) - (x2 + w2)) <= 0.6 * w2 and abs(y - y2) <= 0.6 * h2) or
+              (abs((x + w) - (x2 + w2)) <= 0.6 * w2 and abs((y + h) - (y2 + h2)) <= 0.6 * h2)
+            ):
+              found = True
+              break
 
-            if not found:
-              tracker = cv2.TrackerCSRT_create()
-              tracker.init(img, (x, y, w, h))
-              self.trackers[len(self.trackers)] = {'instance': tracker, 'count': 1}
+          if not found:
+            tracker = cv2.TrackerCSRT_create()
+            tracker.init(img, (x, y, w, h))
+            self.trackers[len(self.trackers)] = {'instance': tracker, 'count': 1}
 
-              if self.debug:
-                cv2.imshow('plate_' + str(len(self.trackers) - 1), img[y-10:y+h+10, x-10:x+w+10])
+            if self.debug:
+              cv2.imshow('plate_' + str(len(self.trackers) - 1), img[y-10:y+h+10, x-10:x+w+10])
 
     self.update_trackers(img)
 
@@ -95,7 +104,7 @@ class LicensePlateDetector:
 
       tracker_count = tracker['count']
 
-      if tracker_count >= 6:
+      if tracker_count > 6:
         continue
 
       path = os.path.join('plates', str(tracker_id))
@@ -107,7 +116,7 @@ class LicensePlateDetector:
       plate_path = os.path.join(path, 'plate' + str(tracker_count) + '.jpg')
 
       try:
-        cv2.imwrite(plate_path, img[y-10:y+h+10, x-10:x+w+10])
+        cv2.imwrite(plate_path, img[y-15:y+h+15, x-15:x+w+15])
       except Exception as e:
         if self.debug:
           print('Error saving image:', e)
@@ -138,8 +147,8 @@ class LicensePlateDetector:
 
 if __name__ == "__main__":
   parser = argparse.ArgumentParser(description="License Plate Detector")
-  parser.add_argument("--video_path", type=str, default='tests/videos/video7.mp4', help="Caminho para o vídeo")
-  parser.add_argument("--chars_cascade_path", type=str, default='UKChars33_16x25_11W.xml', help="Caminho para o arquivo de cascade de caracteres")
+  parser.add_argument("--video_path", type=str, default='license_plate_detection/tests/videos/video7.mp4', help="Caminho para o vídeo")
+  parser.add_argument("--chars_cascade_path", type=str, default='license_plate_detection/UKChars33_16x25_11W.xml', help="Caminho para o arquivo de cascade de caracteres")
   parser.add_argument("--debug", type=bool, default=False, help="Modo de debug")
 
   args = parser.parse_args()
